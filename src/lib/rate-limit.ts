@@ -3,21 +3,21 @@ import { Redis } from "@upstash/redis"
 
 // Create a rate limiter that allows 10 requests per 10 seconds for login attempts
 export const loginRateLimit = new Ratelimit({
-  redis: Redis.fromEnv()
+  redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(5, "60 s"), // 5 attempts per minute
   analytics: true
 })
 
 // Create a rate limiter for general API requests
 export const apiRateLimit = new Ratelimit({
-  redis: Redis.fromEnv()
+  redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(100, "60 s"), // 100 requests per minute
   analytics: true
 })
 
 // Create a stricter rate limiter for sensitive operations
 export const sensitiveRateLimit = new Ratelimit({
-  redis: Redis.fromEnv()
+  redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 requests per minute
   analytics: true
 })
@@ -33,7 +33,7 @@ class MemoryRateLimit {
     this.window = windowSeconds * 1000 // Convert to milliseconds
   }
 
-  async limit(identifier: string): Promise<{ success: boolean; remaining: number }> {
+  async check(identifier: string): Promise<{ success: boolean; remaining: number; reset?: Date }> {
     const now = Date.now()
     const userRequests = this.requests.get(identifier) || []
 
@@ -41,14 +41,14 @@ class MemoryRateLimit {
     const validRequests = userRequests.filter(time => now - time < this.window)
 
     if (validRequests.length >= this.limit) {
-      return { success: false, remaining: 0 }
+      return { success: false, remaining: 0, reset: undefined }
     }
 
     // Add current request
     validRequests.push(now)
     this.requests.set(identifier, validRequests)
 
-    return { success: true, remaining: this.limit - validRequests.length }
+    return { success: true, remaining: this.limit - validRequests.length, reset: undefined }
   }
 }
 
@@ -58,7 +58,7 @@ export const fallbackApiRateLimit = new MemoryRateLimit(100, 60)
 export const fallbackSensitiveRateLimit = new MemoryRateLimit(10, 60)
 
 export async function checkRateLimit(
-  identifier: string
+  identifier: string,
   type: 'login' | 'api' | 'sensitive' = 'api'
 ): Promise<{ success: boolean; remaining: number; reset?: Date }> {
   try {
@@ -83,19 +83,19 @@ export async function checkRateLimit(
     try {
       const result = await rateLimit.limit(identifier)
       return {
-        success: result.success
-        remaining: result.remaining
-        reset: result.reset
+        success: result.success,
+        remaining: result.remaining,
+        reset: new Date(result.reset)
       }
     } catch (error) {
       console.warn('Redis rate limiting failed, falling back to memory:', error)
       // Fall back to in-memory rate limiting
-      return await fallback.limit(identifier)
+      return await fallback.check(identifier)
     }
   } catch (error) {
     console.error('Rate limiting error:', error)
     // If all rate limiting fails, allow the request but log the error
-    return { success: true, remaining: 0 }
+    return { success: true, remaining: 0, reset: undefined }
   }
 }
 

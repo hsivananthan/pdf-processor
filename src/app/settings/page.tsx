@@ -134,7 +134,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Connection Status</h3>
-                  <Badge variant={dbConfig?.configured ? "success" : "destructive"}>
+                  <Badge variant={dbConfig?.configured ? "default" : "destructive"}>
                     {dbConfig?.configured ? "Configured" : "Not Configured"}
                   </Badge>
                 </div>
@@ -160,7 +160,7 @@ export default function SettingsPage() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">SSL</p>
                       <p className="text-sm mt-1">
-                        <Badge variant={dbConfig.config.ssl ? "success" : "secondary"}>
+                        <Badge variant={dbConfig.config.ssl ? "default" : "secondary"}>
                           {dbConfig.config.ssl ? "Enabled" : "Disabled"}
                         </Badge>
                       </p>
@@ -168,7 +168,7 @@ export default function SettingsPage() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Connection Pooling</p>
                       <p className="text-sm mt-1">
-                        <Badge variant={dbConfig.config.pooling ? "success" : "secondary"}>
+                        <Badge variant={dbConfig.config.pooling ? "default" : "secondary"}>
                           {dbConfig.config.pooling ? "Enabled" : "Disabled"}
                         </Badge>
                       </p>
@@ -205,7 +205,7 @@ export default function SettingsPage() {
 
                 {/* Connection Test Result */}
                 {connectionStatus && (
-                  <Alert variant={connectionStatus.success ? "success" : "destructive"}>
+                  <Alert variant={connectionStatus.success ? "default" : "destructive"}>
                     {connectionStatus.success ? (
                       <CheckCircle className="h-4 w-4" />
                     ) : (

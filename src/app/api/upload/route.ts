@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: "Rate limit exceeded. Please wait before uploading another file." }
+        { error: "Rate limit exceeded. Please wait before uploading another file." },
         { status: 429 }
       )
     }
@@ -99,12 +99,12 @@ export async function POST(request: NextRequest) {
     // Create document record
     const document = await prisma.document.create({
       data: {
-        filename: sanitizedFilename
-        originalPath: filePath
-        fileSize: file.size
-        mimeType: file.type
-        customerId: customerId || undefined
-        uploadedById: session.user.id
+        filename: sanitizedFilename,
+        originalPath: filePath,
+        fileSize: file.size,
+        mimeType: file.type,
+        customerId: customerId || undefined,
+        uploadedById: session.user.id,
         status: DocumentStatus.UPLOADED
       }
     })
@@ -112,13 +112,13 @@ export async function POST(request: NextRequest) {
     // Log the upload
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id
-        action: "UPLOAD_DOCUMENT"
-        resource: "DOCUMENTS"
+        userId: session.user.id,
+        action: "UPLOAD_DOCUMENT",
+        resource: "DOCUMENTS",
         details: {
-          documentId: document.id
-          filename: sanitizedFilename
-          fileSize: file.size
+          documentId: document.id,
+          filename: sanitizedFilename,
+          fileSize: file.size,
           customerId: customerId
         }
       }
@@ -131,33 +131,33 @@ export async function POST(request: NextRequest) {
       })
 
     return NextResponse.json({
-      success: true
+      success: true,
       document: {
-        id: document.id
-        filename: document.filename
-        fileSize: document.fileSize
-        status: document.status
-        uploadedAt: document.createdAt
+        id: document.id,
+        filename: document.filename,
+        fileSize: document.fileSize,
+        status: document.status,
+        uploadedAt: document.createdAt,
         customerId: document.customerId
-      }
+      },
       message: "File uploaded successfully. Processing started in background."
     }, { status: 201 })
 
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({
-      error: "Upload failed"
-      details: error.message
+      error: "Upload failed",
+      details: error instanceof Error ? error.message : "Unknown error"
     }, { status: 500 })
   }
 }
 
 // Background processing function
 async function processDocumentAsync(
-  documentId: string
-  filePath: string
-  fileName: string
-  buffer: Buffer
+  documentId: string,
+  filePath: string,
+  fileName: string,
+  buffer: Buffer,
   userId: string
 ) {
   try {
@@ -165,23 +165,23 @@ async function processDocumentAsync(
 
     // Update document status to processing
     await prisma.document.update({
-      where: { id: documentId }
+      where: { id: documentId },
       data: { status: DocumentStatus.PROCESSING }
     })
 
     // Process the document
     const result = await orchestrator.processDocument({
-      documentId
-      filePath
-      fileName
-      buffer
+      documentId,
+      filePath,
+      fileName,
+      buffer,
       userId
     })
 
     console.log(`Document ${documentId} processing completed:`, {
-      success: result.success
-      confidence: result.confidence
-      customerId: result.customerId
+      success: result.success,
+      confidence: result.confidence,
+      customerId: result.customerId,
       templateId: result.templateId
     })
 
@@ -192,7 +192,7 @@ async function processDocumentAsync(
 
     // Update document status to failed
     await prisma.document.update({
-      where: { id: documentId }
+      where: { id: documentId },
       data: { status: DocumentStatus.FAILED }
     }).catch(dbError => {
       console.error('Failed to update document status:', dbError)
@@ -240,38 +240,38 @@ export async function GET(request: NextRequest) {
 
     const [documents, total] = await Promise.all([
       prisma.document.findMany({
-        where
+        where,
         include: {
           customer: {
             select: { id: true, name: true }
-          }
+          },
           uploadedBy: {
             select: { id: true, name: true, email: true }
-          }
+          },
           processingJobs: {
-            select: { status: true, completedAt: true }
-            orderBy: { createdAt: 'desc' }
+            select: { status: true, completedAt: true },
+            orderBy: { createdAt: 'desc' },
             take: 1
-          }
+          },
           csvOutputs: {
-            select: { id: true, fileName: true, rowCount: true, columnCount: true }
-            orderBy: { createdAt: 'desc' }
+            select: { id: true, fileName: true, rowCount: true, columnCount: true },
+            orderBy: { createdAt: 'desc' },
             take: 1
           }
-        }
-        skip
-        take: limit
+        },
+        skip,
+        take: limit,
         orderBy: { createdAt: 'desc' }
-      })
+      }),
       prisma.document.count({ where })
     ])
 
     return NextResponse.json({
-      documents
+      documents,
       pagination: {
-        page
-        limit
-        total
+        page,
+        limit,
+        total,
         pages: Math.ceil(total / limit)
       }
     })

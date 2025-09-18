@@ -6,18 +6,18 @@ import { canAccessResource } from "@/lib/auth-utils"
 import { z } from "zod"
 
 const createCustomerSchema = z.object({
-  name: z.string().min(1).max(100)
+  name: z.string().min(1).max(100),
   identifierPatterns: z.array(z.object({
-    type: z.enum(['text', 'regex', 'position', 'header', 'footer'])
-    pattern: z.string()
-    weight: z.number().min(0).max(10).default(1)
+    type: z.enum(['text', 'regex', 'position', 'header', 'footer']),
+    pattern: z.string(),
+    weight: z.number().min(0).max(10).default(1),
     caseSensitive: z.boolean().default(false)
-  }))
+  })),
   contactInfo: z.object({
-    email: z.string().email().optional()
-    phone: z.string().optional()
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
     address: z.string().optional()
-  }).optional()
+  }).optional(),
   accessPermissions: z.record(z.string(), z.boolean()).optional()
 })
 
@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
       isActive: boolean
       name?: {
         contains: string
-        
       }
     }
 
@@ -55,33 +54,32 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.name = {
         contains: search
-        
       }
     }
 
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
-        where
+        where,
         include: {
           templates: {
-            where: { isActive: true }
+            where: { isActive: true },
             select: { id: true, name: true, version: true }
-          }
+          },
           documents: {
-            select: { status: true }
+            select: { status: true },
             take: 100 // Limit for counting
-          }
+          },
           _count: {
             select: {
-              documents: true
+              documents: true,
               templates: true
             }
           }
-        }
-        skip
-        take: limit
+        },
+        skip,
+        take: limit,
         orderBy: { name: 'asc' }
-      })
+      }),
       prisma.customer.count({ where })
     ])
 
@@ -93,18 +91,18 @@ export async function GET(request: NextRequest) {
       }, {} as Record<string, number>)
 
       return {
-        ...customer
-        documentStats
+        ...customer,
+        documentStats,
         documents: undefined // Remove documents array from response
       }
     })
 
     return NextResponse.json({
-      customers: customersWithStats
+      customers: customersWithStats,
       pagination: {
-        page
-        limit
-        total
+        page,
+        limit,
+        total,
         pages: Math.ceil(total / limit)
       }
     })
@@ -132,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.issues }
+        { error: "Validation failed", details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -144,14 +142,14 @@ export async function POST(request: NextRequest) {
       where: {
         name: {
           equals: name
-        }
+        },
         isActive: true
       }
     })
 
     if (existingCustomer) {
       return NextResponse.json(
-        { error: "Customer with this name already exists" }
+        { error: "Customer with this name already exists" },
         { status: 409 }
       )
     }
@@ -159,9 +157,9 @@ export async function POST(request: NextRequest) {
     // Create customer
     const customer = await prisma.customer.create({
       data: {
-        name
-        identifierPatterns: identifierPatterns as object
-        contactInfo: contactInfo as object
+        name,
+        identifierPatterns: identifierPatterns as object,
+        contactInfo: contactInfo as object,
         accessPermissions: accessPermissions as object
       }
     })
@@ -169,26 +167,26 @@ export async function POST(request: NextRequest) {
     // Log customer creation
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id
-        action: "CREATE_CUSTOMER"
-        resource: "CUSTOMERS"
+        userId: session.user.id,
+        action: "CREATE_CUSTOMER",
+        resource: "CUSTOMERS",
         details: {
-          customerId: customer.id
-          customerName: customer.name
+          customerId: customer.id,
+          customerName: customer.name,
           patternsCount: identifierPatterns.length
         }
       }
     })
 
     return NextResponse.json({
-      customer
+      customer,
       message: "Customer created successfully"
     }, { status: 201 })
 
   } catch (error) {
     console.error('Error creating customer:', error)
     return NextResponse.json({
-      error: "Customer creation failed"
+      error: "Customer creation failed",
       details: error instanceof Error ? error.message : 'Unknown error occurred'
     }, { status: 500 })
   }

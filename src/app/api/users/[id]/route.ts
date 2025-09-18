@@ -7,15 +7,15 @@ import { UserRole } from "@prisma/client"
 import { z } from "zod"
 
 const updateUserSchema = z.object({
-  email: z.string().email().optional()
-  password: z.string().min(8).optional()
-  name: z.string().optional()
-  role: z.enum([UserRole.ADMIN, UserRole.MANAGER, UserRole.USER, UserRole.READONLY]).optional()
+  email: z.string().email().optional(),
+  password: z.string().min(8).optional(),
+  name: z.string().optional(),
+  role: z.enum([UserRole.ADMIN, UserRole.MANAGER, UserRole.USER, UserRole.READONLY]).optional(),
   isActive: z.boolean().optional()
 })
 
 export async function GET(
-  request: NextRequest
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -34,21 +34,21 @@ export async function GET(
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: id }
+      where: { id: id },
       select: {
-        id: true
-        email: true
-        name: true
-        role: true
-        isActive: true
-        lastLogin: true
-        createdAt: true
-        updatedAt: true
-        failedAttempts: true
-        lockedUntil: true
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+        failedAttempts: true,
+        lockedUntil: true,
         _count: {
           select: {
-            documents: true
+            documents: true,
             processingJobs: true
           }
         }
@@ -68,7 +68,7 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: NextRequest
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -84,7 +84,7 @@ export async function PATCH(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.issues }
+        { error: "Validation failed", details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -131,7 +131,7 @@ export async function PATCH(
       const passwordValidation = validatePassword(updateData.password)
       if (!passwordValidation.isValid) {
         return NextResponse.json(
-          { error: "Password validation failed", details: passwordValidation.errors }
+          { error: "Password validation failed", details: passwordValidation.errors },
           { status: 400 }
         )
       }
@@ -155,16 +155,16 @@ export async function PATCH(
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: id }
-      data: updateData
+      where: { id: id },
+      data: updateData,
       select: {
-        id: true
-        email: true
-        name: true
-        role: true
-        isActive: true
-        lastLogin: true
-        createdAt: true
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
         updatedAt: true
       }
     })
@@ -172,12 +172,12 @@ export async function PATCH(
     // Log user update
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id
-        action: "UPDATE_USER"
-        resource: "USERS"
+        userId: session.user.id,
+        action: "UPDATE_USER",
+        resource: "USERS",
         details: {
-          targetUserId: id
-          changes: Object.keys(validation.data)
+          targetUserId: id,
+          changes: Object.keys(validation.data),
           isOwnProfile
         }
       }
@@ -192,7 +192,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -223,9 +223,9 @@ export async function DELETE(
 
     // Soft delete by deactivating instead of hard delete to preserve audit trail
     await prisma.user.update({
-      where: { id: id }
+      where: { id: id },
       data: {
-        isActive: false
+        isActive: false,
         // Optionally anonymize email to prevent conflicts
         email: `deleted_${Date.now()}_${user.email}`
       }
@@ -234,11 +234,11 @@ export async function DELETE(
     // Log user deletion
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id
-        action: "DELETE_USER"
-        resource: "USERS"
+        userId: session.user.id,
+        action: "DELETE_USER",
+        resource: "USERS",
         details: {
-          targetUserId: id
+          targetUserId: id,
           targetUserEmail: user.email
         }
       }

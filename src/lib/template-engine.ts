@@ -57,12 +57,12 @@ export class TemplateEngine {
   async initialize(): Promise<void> {
     try {
       const templates = await prisma.documentTemplate.findMany({
-        where: { isActive: true }
+        where: { isActive: true },
         include: {
           hardcodedMappings: {
-            where: { isActive: true }
+            where: { isActive: true },
             orderBy: { priority: 'desc' }
-          }
+          },
           extractionFields: true
         }
       })
@@ -96,7 +96,7 @@ export class TemplateEngine {
     // Score templates based on how well they match the document
     const templateScores = await Promise.all(
       customerTemplates.map(async template => ({
-        template
+        template,
         score: await this.scoreTemplate(template, extractedText)
       }))
     )
@@ -168,17 +168,17 @@ export class TemplateEngine {
   }
 
   async processDocument(
-    template: TemplateWithMappings
-    extractedText: string
+    template: TemplateWithMappings,
+    extractedText: string,
     extractedData: any
   ): Promise<ProcessingResult> {
     const startTime = Date.now()
     const result: ProcessingResult = {
-      success: false
-      extractedData: {}
-      confidence: 0
-      errors: []
-      warnings: []
+      success: false,
+      extractedData: {},
+      confidence: 0,
+      errors: [],
+      warnings: [],
       processingTime: 0
     }
 
@@ -197,8 +197,8 @@ export class TemplateEngine {
           if (extractedValue !== null && extractedValue !== undefined) {
             // Apply hardcoded mappings
             const mappedValue = this.applyHardcodedMappings(
-              template.hardcodedMappings
-              rule.fieldName
+              template.hardcodedMappings,
+              rule.fieldName,
               extractedValue
             )
 
@@ -220,7 +220,7 @@ export class TemplateEngine {
             }
           }
         } catch (error) {
-          result.errors.push(`Error extracting field '${rule.fieldName}': ${error.message}`)
+          result.errors.push(`Error extracting field '${rule.fieldName}': ${error instanceof Error ? error.message : "Unknown error"}`)
         }
       }
 
@@ -229,7 +229,7 @@ export class TemplateEngine {
       result.success = result.errors.length === 0 && result.confidence > 0.5
 
     } catch (error) {
-      result.errors.push(`Template processing failed: ${error.message}`)
+      result.errors.push(`Template processing failed: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
 
     result.processingTime = Date.now() - startTime
@@ -237,8 +237,8 @@ export class TemplateEngine {
   }
 
   private async extractField(
-    rule: ExtractionRule
-    text: string
+    rule: ExtractionRule,
+    text: string,
     extractedData: any
   ): Promise<any> {
     switch (rule.extractionType) {
@@ -375,7 +375,7 @@ export class TemplateEngine {
         }
         return eval(expression) // WARNING: eval is dangerous in production - use a safe expression parser
       } catch (error) {
-        throw new Error(`Formula evaluation failed: ${error.message}`)
+        throw new Error(`Formula evaluation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
       }
     }
 
@@ -401,8 +401,8 @@ export class TemplateEngine {
   }
 
   private applyHardcodedMappings(
-    mappings: HardcodedMapping[]
-    fieldName: string
+    mappings: HardcodedMapping[],
+    fieldName: string,
     value: any
   ): any {
     const fieldMappings = mappings.filter(m => m.fieldName === fieldName)
@@ -517,7 +517,7 @@ export class TemplateEngine {
     })
 
     return {
-      totalTemplates: this.templates.size
+      totalTemplates: this.templates.size,
       customerTemplates
     }
   }

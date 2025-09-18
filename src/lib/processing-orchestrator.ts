@@ -48,8 +48,8 @@ export class ProcessingOrchestrator {
       console.log('Initializing processing orchestrator...')
 
       await Promise.all([
-        this.pdfProcessor.initialize()
-        this.customerDetector.initialize()
+        this.pdfProcessor.initialize(),
+        this.customerDetector.initialize(),
         this.templateEngine.initialize()
       ])
 
@@ -64,21 +64,21 @@ export class ProcessingOrchestrator {
   async processDocument(request: ProcessingRequest): Promise<ProcessingResponse> {
     const startTime = Date.now()
     const response: ProcessingResponse = {
-      success: false
-      documentId: request.documentId
-      processingJobId: ''
-      confidence: 0
-      errors: []
-      warnings: []
+      success: false,
+      documentId: request.documentId,
+      processingJobId: '',
+      confidence: 0,
+      errors: [],
+      warnings: [],
       processingTime: 0
     }
 
     // Create processing job
     const processingJob = await prisma.processingJob.create({
       data: {
-        documentId: request.documentId
-        status: JobStatus.RUNNING
-        processedById: request.userId
+        documentId: request.documentId,
+        status: JobStatus.RUNNING,
+        processedById: request.userId,
         startedAt: new Date()
       }
     })
@@ -99,7 +99,7 @@ export class ProcessingOrchestrator {
       // Step 2: Detect customer
       console.log('Detecting customer...')
       const customerDetection = await this.customerDetector.detectCustomer(
-        extractedData.text
+        extractedData.text,
         request.fileName
       )
 
@@ -108,13 +108,13 @@ export class ProcessingOrchestrator {
 
         // Update document with unknown customer
         await prisma.document.update({
-          where: { id: request.documentId }
+          where: { id: request.documentId },
           data: {
-            status: DocumentStatus.COMPLETED
-            confidenceScore: 0
+            status: DocumentStatus.COMPLETED,
+            confidenceScore: 0,
             detectionLog: {
-              customerDetection
-              extractedLength: extractedData.text.length
+              customerDetection: customerDetection as any,
+              extractedLength: extractedData.text.length,
               confidence: 0
             }
           }
@@ -132,7 +132,7 @@ export class ProcessingOrchestrator {
 
         // Step 3: Select appropriate template
         const template = await this.templateEngine.selectTemplate(
-          customerDetection.customerId
+          customerDetection.customerId,
           extractedData.text
         )
 
@@ -151,20 +151,20 @@ export class ProcessingOrchestrator {
 
           // Step 4: Process document with template
           const processingResult = await this.templateEngine.processDocument(
-            template
-            extractedData.text
+            template,
+            extractedData.text,
             {
-              tables: await this.pdfProcessor.extractTables(extractedData.text)
-              keyValuePairs: await this.pdfProcessor.detectKeyValuePairs(extractedData.text)
-              dates: await this.pdfProcessor.extractDates(extractedData.text)
+              tables: await this.pdfProcessor.extractTables(extractedData.text),
+              keyValuePairs: await this.pdfProcessor.detectKeyValuePairs(extractedData.text),
+              dates: await this.pdfProcessor.extractDates(extractedData.text),
               numbers: await this.pdfProcessor.extractNumbers(extractedData.text)
             }
           )
 
           // Step 5: Generate CSV
           const csvFilePath = await this.generateCSV(
-            processingResult.extractedData
-            template
+            processingResult.extractedData,
+            template,
             request
           )
 
@@ -180,19 +180,19 @@ export class ProcessingOrchestrator {
 
           // Update document in database
           await prisma.document.update({
-            where: { id: request.documentId }
+            where: { id: request.documentId },
             data: {
-              customerId: customerDetection.customerId
-              templateId: template.id
-              status: response.success ? DocumentStatus.COMPLETED : DocumentStatus.FAILED
-              confidenceScore: response.confidence
+              customerId: customerDetection.customerId,
+              templateId: template.id,
+              status: response.success ? DocumentStatus.COMPLETED : DocumentStatus.FAILED,
+              confidenceScore: response.confidence,
               detectionLog: {
-                customerDetection
+                customerDetection: customerDetection as any,
                 templateSelection: {
-                  templateId: template.id
+                  templateId: template.id,
                   templateName: template.name
-                }
-                processingResult
+                },
+                processingResult: processingResult as any,
                 extractedLength: extractedData.text.length
               }
             }
@@ -203,10 +203,10 @@ export class ProcessingOrchestrator {
             const stats = await fs.stat(csvFilePath)
             await prisma.csvOutput.create({
               data: {
-                documentId: request.documentId
-                filePath: csvFilePath
-                fileName: path.basename(csvFilePath)
-                rowCount: Object.keys(processingResult.extractedData).length
+                documentId: request.documentId,
+                filePath: csvFilePath,
+                fileName: path.basename(csvFilePath),
+                rowCount: Object.keys(processingResult.extractedData).length,
                 columnCount: 2, // Field name and value
                 fileSize: stats.size
               }
@@ -217,15 +217,15 @@ export class ProcessingOrchestrator {
 
       // Update processing job
       await prisma.processingJob.update({
-        where: { id: processingJob.id }
+        where: { id: processingJob.id },
         data: {
-          status: response.success ? JobStatus.COMPLETED : JobStatus.FAILED
-          completedAt: new Date()
+          status: response.success ? JobStatus.COMPLETED : JobStatus.FAILED,
+          completedAt: new Date(),
           extractionLog: {
-            customerDetection
-            extractedDataLength: extractedData.text.length
-            confidence: response.confidence
-            errors: response.errors
+            customerDetection: customerDetection as any,
+            extractedDataLength: extractedData.text.length,
+            confidence: response.confidence,
+            errors: response.errors,
             warnings: response.warnings
           }
         }
@@ -233,21 +233,21 @@ export class ProcessingOrchestrator {
 
     } catch (error) {
       console.error('Document processing failed:', error)
-      response.errors.push(error.message)
+      response.errors.push(error instanceof Error ? error.message : "Unknown error")
 
       // Update processing job with error
       await prisma.processingJob.update({
-        where: { id: processingJob.id }
+        where: { id: processingJob.id },
         data: {
-          status: JobStatus.FAILED
-          errorMessage: error.message
+          status: JobStatus.FAILED,
+          errorMessage: error instanceof Error ? error.message : "Unknown error",
           completedAt: new Date()
         }
       })
 
       // Update document status
       await prisma.document.update({
-        where: { id: request.documentId }
+        where: { id: request.documentId },
         data: {
           status: DocumentStatus.FAILED
         }
@@ -259,8 +259,8 @@ export class ProcessingOrchestrator {
   }
 
   private async createBasicCSV(
-    extractedData: ExtractedData
-    request: ProcessingRequest
+    extractedData: ExtractedData,
+    request: ProcessingRequest,
     customerId?: string
   ): Promise<{ filePath: string; data: Record<string, any> }> {
     // Extract basic information
@@ -268,11 +268,11 @@ export class ProcessingOrchestrator {
     const dates = await this.pdfProcessor.extractDates(extractedData.text)
     const numbers = await this.pdfProcessor.extractNumbers(extractedData.text)
 
-    const basicData = {
-      document_name: request.fileName
-      extraction_date: new Date().toISOString()
-      total_pages: extractedData.metadata.totalPages
-      customer_id: customerId || 'unknown'
+    const basicData: Record<string, any> = {
+      document_name: request.fileName,
+      extraction_date: new Date().toISOString(),
+      total_pages: extractedData.metadata.totalPages,
+      customer_id: customerId || 'unknown',
       ...keyValuePairs
     }
 
@@ -289,8 +289,8 @@ export class ProcessingOrchestrator {
   }
 
   private async generateCSV(
-    data: Record<string, any>
-    template: any
+    data: Record<string, any>,
+    template: any,
     request: ProcessingRequest
   ): Promise<string> {
     try {
@@ -306,17 +306,17 @@ export class ProcessingOrchestrator {
 
       // Prepare CSV data
       const csvRecords = Object.entries(data).map(([field, value]) => ({
-        field_name: field
-        field_value: this.formatValue(value)
+        field_name: field,
+        field_value: this.formatValue(value),
         data_type: this.determineDataType(value)
       }))
 
       // Create CSV writer
       const csvWriter = csv.createObjectCsvWriter({
-        path: csvFilePath
+        path: csvFilePath,
         header: [
-          { id: 'field_name', title: 'Field Name' }
-          { id: 'field_value', title: 'Field Value' }
+          { id: 'field_name', title: 'Field Name' },
+          { id: 'field_value', title: 'Field Value' },
           { id: 'data_type', title: 'Data Type' }
         ]
       })
@@ -329,7 +329,7 @@ export class ProcessingOrchestrator {
 
     } catch (error) {
       console.error('CSV generation failed:', error)
-      throw new Error(`CSV generation failed: ${error.message}`)
+      throw new Error(`CSV generation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 
@@ -411,10 +411,10 @@ export class ProcessingOrchestrator {
 
       // Create a new processing request
       const request: ProcessingRequest = {
-        documentId
-        filePath: document.originalPath
-        fileName: document.filename
-        buffer
+        documentId,
+        filePath: document.originalPath,
+        fileName: document.filename,
+        buffer,
         userId
       }
 
@@ -425,14 +425,14 @@ export class ProcessingOrchestrator {
           // Create a reprocessing history entry
           await prisma.reprocessingHistory.create({
             data: {
-              documentId
-              version: await this.getNextVersion(documentId)
+              documentId,
+              version: await this.getNextVersion(documentId),
               changesMade: {
-                action: 'manual_template_override'
-                templateId
-                templateName: template.name
+                action: 'manual_template_override',
+                templateId,
+                templateName: template.name,
                 triggeredBy: userId
-              }
+              },
               triggeredBy: userId
             }
           })
@@ -452,7 +452,7 @@ export class ProcessingOrchestrator {
 
   private async getNextVersion(documentId: string): Promise<number> {
     const latestVersion = await prisma.reprocessingHistory.findFirst({
-      where: { documentId }
+      where: { documentId },
       orderBy: { version: 'desc' }
     })
 
@@ -469,7 +469,7 @@ export class ProcessingOrchestrator {
       const jobs = await prisma.processingJob.findMany({
         where: {
           status: { in: [JobStatus.COMPLETED, JobStatus.FAILED] }
-        }
+        },
         include: {
           document: true
         }
@@ -504,9 +504,9 @@ export class ProcessingOrchestrator {
         .map(([error]) => error)
 
       return {
-        totalProcessed
-        successRate
-        averageConfidence
+        totalProcessed,
+        successRate,
+        averageConfidence,
         topErrors
       }
 
