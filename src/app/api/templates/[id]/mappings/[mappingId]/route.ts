@@ -6,17 +6,18 @@ import { canAccessResource } from "@/lib/auth-utils"
 import { z } from "zod"
 
 const updateMappingSchema = z.object({
-  sourcePattern: z.string().min(1).max(200).optional(),
-  targetValue: z.string().min(1).max(200).optional(),
-  fieldName: z.string().min(1).max(100).optional(),
-  priority: z.number().min(0).max(10).optional(),
+  sourcePattern: z.string().min(1).max(200).optional()
+  targetValue: z.string().min(1).max(200).optional()
+  fieldName: z.string().min(1).max(100).optional()
+  priority: z.number().min(0).max(10).optional()
   isActive: z.boolean().optional()
 })
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string; mappingId: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string; mappingId: string }> }
 ) {
+  const { id, mappingId } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -30,9 +31,9 @@ export async function GET(
 
     const mapping = await prisma.hardcodedMapping.findUnique({
       where: {
-        id: params.mappingId,
-        templateId: params.id
-      },
+        id: mappingId
+        templateId: id
+      }
       include: {
         template: {
           select: { id: true, name: true, customerId: true }
@@ -53,9 +54,10 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string; mappingId: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string; mappingId: string }> }
 ) {
+  const { id, mappingId } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -72,7 +74,7 @@ export async function PATCH(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.errors },
+        { error: "Validation failed", details: validation.error.issues }
         { status: 400 }
       )
     }
@@ -80,8 +82,8 @@ export async function PATCH(
     // Verify mapping exists
     const existingMapping = await prisma.hardcodedMapping.findUnique({
       where: {
-        id: params.mappingId,
-        templateId: params.id
+        id: mappingId
+        templateId: id
       }
     })
 
@@ -98,20 +100,20 @@ export async function PATCH(
 
       const duplicateMapping = await prisma.hardcodedMapping.findFirst({
         where: {
-          templateId: params.id,
-          fieldName: checkField,
+          templateId: id
+          fieldName: checkField
           sourcePattern: {
-            equals: checkPattern,
-            mode: 'insensitive'
-          },
-          isActive: true,
-          id: { not: params.mappingId }
+            equals: checkPattern
+            
+          }
+          isActive: true
+          id: { not: mappingId }
         }
       })
 
       if (duplicateMapping) {
         return NextResponse.json(
-          { error: "A mapping with this pattern already exists for this field" },
+          { error: "A mapping with this pattern already exists for this field" }
           { status: 409 }
         )
       }
@@ -119,50 +121,51 @@ export async function PATCH(
 
     // Update mapping
     const updatedMapping = await prisma.hardcodedMapping.update({
-      where: { id: params.mappingId },
+      where: { id: mappingId }
       data: updateData
     })
 
     // Log mapping update
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "UPDATE_MAPPING",
-        resource: "TEMPLATES",
+        userId: session.user.id
+        action: "UPDATE_MAPPING"
+        resource: "TEMPLATES"
         details: {
-          templateId: params.id,
-          mappingId: params.mappingId,
-          changes: Object.keys(updateData),
+          templateId: id
+          mappingId: mappingId
+          changes: Object.keys(updateData)
           oldValues: {
-            sourcePattern: existingMapping.sourcePattern,
-            targetValue: existingMapping.targetValue,
-            fieldName: existingMapping.fieldName,
-            priority: existingMapping.priority,
+            sourcePattern: existingMapping.sourcePattern
+            targetValue: existingMapping.targetValue
+            fieldName: existingMapping.fieldName
+            priority: existingMapping.priority
             isActive: existingMapping.isActive
-          },
+          }
           newValues: updateData
         }
       }
     })
 
     return NextResponse.json({
-      mapping: updatedMapping,
+      mapping: updatedMapping
       message: "Mapping updated successfully"
     })
 
   } catch (error) {
     console.error('Error updating mapping:', error)
     return NextResponse.json({
-      error: "Mapping update failed",
+      error: "Mapping update failed"
       details: error.message
     }, { status: 500 })
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string; mappingId: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string; mappingId: string }> }
 ) {
+  const { id, mappingId } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -177,8 +180,8 @@ export async function DELETE(
     // Verify mapping exists
     const mapping = await prisma.hardcodedMapping.findUnique({
       where: {
-        id: params.mappingId,
-        templateId: params.id
+        id: mappingId
+        templateId: id
       }
     })
 
@@ -188,21 +191,21 @@ export async function DELETE(
 
     // Soft delete by setting isActive to false
     await prisma.hardcodedMapping.update({
-      where: { id: params.mappingId },
+      where: { id: mappingId }
       data: { isActive: false }
     })
 
     // Log mapping deletion
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "DELETE_MAPPING",
-        resource: "TEMPLATES",
+        userId: session.user.id
+        action: "DELETE_MAPPING"
+        resource: "TEMPLATES"
         details: {
-          templateId: params.id,
-          mappingId: params.mappingId,
-          sourcePattern: mapping.sourcePattern,
-          targetValue: mapping.targetValue,
+          templateId: id
+          mappingId: mappingId
+          sourcePattern: mapping.sourcePattern
+          targetValue: mapping.targetValue
           fieldName: mapping.fieldName
         }
       }
@@ -215,7 +218,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting mapping:', error)
     return NextResponse.json({
-      error: "Mapping deletion failed",
+      error: "Mapping deletion failed"
       details: error.message
     }, { status: 500 })
   }

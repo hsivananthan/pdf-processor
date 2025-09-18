@@ -3,23 +3,23 @@ import { Redis } from "@upstash/redis"
 
 // Create a rate limiter that allows 10 requests per 10 seconds for login attempts
 export const loginRateLimit = new Ratelimit({
-  redis: Redis.fromEnv(),
+  redis: Redis.fromEnv()
   limiter: Ratelimit.slidingWindow(5, "60 s"), // 5 attempts per minute
-  analytics: true,
+  analytics: true
 })
 
 // Create a rate limiter for general API requests
 export const apiRateLimit = new Ratelimit({
-  redis: Redis.fromEnv(),
+  redis: Redis.fromEnv()
   limiter: Ratelimit.slidingWindow(100, "60 s"), // 100 requests per minute
-  analytics: true,
+  analytics: true
 })
 
 // Create a stricter rate limiter for sensitive operations
 export const sensitiveRateLimit = new Ratelimit({
-  redis: Redis.fromEnv(),
+  redis: Redis.fromEnv()
   limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 requests per minute
-  analytics: true,
+  analytics: true
 })
 
 // Fallback in-memory rate limiter when Redis is not available
@@ -58,7 +58,7 @@ export const fallbackApiRateLimit = new MemoryRateLimit(100, 60)
 export const fallbackSensitiveRateLimit = new MemoryRateLimit(10, 60)
 
 export async function checkRateLimit(
-  identifier: string,
+  identifier: string
   type: 'login' | 'api' | 'sensitive' = 'api'
 ): Promise<{ success: boolean; remaining: number; reset?: Date }> {
   try {
@@ -83,8 +83,8 @@ export async function checkRateLimit(
     try {
       const result = await rateLimit.limit(identifier)
       return {
-        success: result.success,
-        remaining: result.remaining,
+        success: result.success
+        remaining: result.remaining
         reset: result.reset
       }
     } catch (error) {

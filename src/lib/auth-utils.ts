@@ -63,7 +63,7 @@ export function validatePassword(password: string): { isValid: boolean; errors: 
   }
 
   return {
-    isValid: errors.length === 0,
+    isValid: errors.length === 0
     errors
   }
 }
@@ -75,10 +75,10 @@ export function validateEmail(email: string): boolean {
 
 export function hasPermission(userRole: UserRole, requiredRole: UserRole): boolean {
   const roleHierarchy = {
-    [UserRole.READONLY]: 0,
-    [UserRole.USER]: 1,
-    [UserRole.MANAGER]: 2,
-    [UserRole.ADMIN]: 3,
+    [UserRole.READONLY]: 0
+    [UserRole.USER]: 1
+    [UserRole.MANAGER]: 2
+    [UserRole.ADMIN]: 3
   }
 
   return roleHierarchy[userRole] >= roleHierarchy[requiredRole]
@@ -86,25 +86,25 @@ export function hasPermission(userRole: UserRole, requiredRole: UserRole): boole
 
 export function canAccessResource(userRole: UserRole, resource: string, action: string): boolean {
   const permissions = {
-    [UserRole.ADMIN]: ['*'],
+    [UserRole.ADMIN]: ['*']
     [UserRole.MANAGER]: [
-      'templates.*',
-      'users.view',
-      'users.edit',
-      'documents.*',
-      'reports.*',
+      'templates.*'
+      'users.view'
+      'users.edit'
+      'documents.*'
+      'reports.*'
       'customers.*'
-    ],
+    ]
     [UserRole.USER]: [
-      'documents.upload',
-      'documents.download',
-      'documents.view',
-      'profile.*',
+      'documents.upload'
+      'documents.download'
+      'documents.view'
+      'profile.*'
       'templates.view'
-    ],
+    ]
     [UserRole.READONLY]: [
-      'documents.view',
-      'reports.view',
+      'documents.view'
+      'reports.view'
       'profile.view'
     ]
   }

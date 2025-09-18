@@ -101,7 +101,7 @@ export default function Dashboard() {
           Welcome back, {session.user.name || session.user.email}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Here's what's happening with your PDF processing system today.
+          Here&apos;s what&apos;s happening with your PDF processing system today.
         </p>
       </div>
 

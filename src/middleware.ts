@@ -43,13 +43,13 @@ export default withAuth(
 
       return NextResponse.next({
         request: {
-          headers: requestHeaders,
-        },
+          headers: requestHeaders
+        }
       })
     }
 
     return NextResponse.next()
-  },
+  }
   {
     callbacks: {
       authorized: ({ token, req }) => {
@@ -63,13 +63,13 @@ export default withAuth(
 
         // Require authentication for all other routes
         return !!token
-      },
-    },
+      }
+    }
   }
 )
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)'
+  ]
 }

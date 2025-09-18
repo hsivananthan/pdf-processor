@@ -6,18 +6,19 @@ import { canAccessResource } from "@/lib/auth-utils"
 import { z } from "zod"
 
 const createMappingSchema = z.object({
-  sourcePattern: z.string().min(1).max(200),
-  targetValue: z.string().min(1).max(200),
-  fieldName: z.string().min(1).max(100),
+  sourcePattern: z.string().min(1).max(200)
+  targetValue: z.string().min(1).max(200)
+  fieldName: z.string().min(1).max(100)
   priority: z.number().min(0).max(10).default(0)
 })
 
 const updateMappingSchema = createMappingSchema.partial()
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -31,7 +32,7 @@ export async function GET(
 
     // Verify template exists
     const template = await prisma.documentTemplate.findUnique({
-      where: { id: params.id, isActive: true }
+      where: { id: id, isActive: true }
     })
 
     if (!template) {
@@ -41,12 +42,12 @@ export async function GET(
     // Get all mappings for this template
     const mappings = await prisma.hardcodedMapping.findMany({
       where: {
-        templateId: params.id,
+        templateId: id
         isActive: true
-      },
+      }
       orderBy: [
-        { priority: 'desc' },
-        { fieldName: 'asc' },
+        { priority: 'desc' }
+        { fieldName: 'asc' }
         { createdAt: 'desc' }
       ]
     })
@@ -61,11 +62,11 @@ export async function GET(
     }, {} as Record<string, typeof mappings>)
 
     return NextResponse.json({
-      templateId: params.id,
-      templateName: template.name,
-      mappings,
-      mappingsByField,
-      totalMappings: mappings.length,
+      templateId: id
+      templateName: template.name
+      mappings
+      mappingsByField
+      totalMappings: mappings.length
       fieldCount: Object.keys(mappingsByField).length
     })
 
@@ -76,9 +77,10 @@ export async function GET(
 }
 
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -95,14 +97,14 @@ export async function POST(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.errors },
+        { error: "Validation failed", details: validation.error.issues }
         { status: 400 }
       )
     }
 
     // Verify template exists
     const template = await prisma.documentTemplate.findUnique({
-      where: { id: params.id, isActive: true }
+      where: { id: id, isActive: true }
     })
 
     if (!template) {
@@ -114,19 +116,19 @@ export async function POST(
     // Check for duplicate mapping (same pattern for same field)
     const existingMapping = await prisma.hardcodedMapping.findFirst({
       where: {
-        templateId: params.id,
-        fieldName,
+        templateId: id
+        fieldName
         sourcePattern: {
-          equals: sourcePattern,
-          mode: 'insensitive'
-        },
+          equals: sourcePattern
+          
+        }
         isActive: true
       }
     })
 
     if (existingMapping) {
       return NextResponse.json(
-        { error: "A mapping with this pattern already exists for this field" },
+        { error: "A mapping with this pattern already exists for this field" }
         { status: 409 }
       )
     }
@@ -134,10 +136,10 @@ export async function POST(
     // Create new mapping
     const mapping = await prisma.hardcodedMapping.create({
       data: {
-        templateId: params.id,
-        sourcePattern,
-        targetValue,
-        fieldName,
+        templateId: id
+        sourcePattern
+        targetValue
+        fieldName
         priority
       }
     })
@@ -145,28 +147,28 @@ export async function POST(
     // Log mapping creation
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "CREATE_MAPPING",
-        resource: "TEMPLATES",
+        userId: session.user.id
+        action: "CREATE_MAPPING"
+        resource: "TEMPLATES"
         details: {
-          templateId: params.id,
-          mappingId: mapping.id,
-          fieldName,
-          sourcePattern,
+          templateId: id
+          mappingId: mapping.id
+          fieldName
+          sourcePattern
           targetValue
         }
       }
     })
 
     return NextResponse.json({
-      mapping,
+      mapping
       message: "Mapping created successfully"
     }, { status: 201 })
 
   } catch (error) {
     console.error('Error creating mapping:', error)
     return NextResponse.json({
-      error: "Mapping creation failed",
+      error: "Mapping creation failed"
       details: error.message
     }, { status: 500 })
   }

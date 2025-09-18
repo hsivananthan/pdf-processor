@@ -7,44 +7,44 @@ import { UserRole } from "@prisma/client"
 import { z } from "zod"
 
 const createTemplateSchema = z.object({
-  customerId: z.string().cuid(),
-  name: z.string().min(1).max(100),
-  description: z.string().optional(),
+  customerId: z.string().cuid()
+  name: z.string().min(1).max(100)
+  description: z.string().optional()
   extractionRules: z.array(z.object({
-    fieldName: z.string(),
-    extractionType: z.enum(['regex', 'position', 'table', 'keyword', 'calculation']),
-    pattern: z.string().optional(),
+    fieldName: z.string()
+    extractionType: z.enum(['regex', 'position', 'table', 'keyword', 'calculation'])
+    pattern: z.string().optional()
     position: z.object({
-      page: z.number().optional(),
-      x: z.number().optional(),
-      y: z.number().optional(),
-      width: z.number().optional(),
+      page: z.number().optional()
+      x: z.number().optional()
+      y: z.number().optional()
+      width: z.number().optional()
       height: z.number().optional()
-    }).optional(),
+    }).optional()
     tableConfig: z.object({
-      tableIndex: z.number(),
-      columnIndex: z.number(),
-      rowIndex: z.number().optional(),
+      tableIndex: z.number()
+      columnIndex: z.number()
+      rowIndex: z.number().optional()
       headerName: z.string().optional()
-    }).optional(),
+    }).optional()
     keywordConfig: z.object({
-      keywords: z.array(z.string()),
-      searchRadius: z.number(),
+      keywords: z.array(z.string())
+      searchRadius: z.number()
       direction: z.enum(['before', 'after', 'same_line'])
-    }).optional(),
+    }).optional()
     calculationConfig: z.object({
-      operation: z.enum(['sum', 'multiply', 'subtract', 'divide']),
-      sourceFields: z.array(z.string()),
+      operation: z.enum(['sum', 'multiply', 'subtract', 'divide'])
+      sourceFields: z.array(z.string())
       formula: z.string().optional()
-    }).optional(),
+    }).optional()
     validation: z.object({
-      dataType: z.enum(['string', 'number', 'date', 'currency', 'percentage']),
-      required: z.boolean(),
-      minLength: z.number().optional(),
-      maxLength: z.number().optional(),
+      dataType: z.enum(['string', 'number', 'date', 'currency', 'percentage'])
+      required: z.boolean()
+      minLength: z.number().optional()
+      maxLength: z.number().optional()
       pattern: z.string().optional()
     }).optional()
-  })),
+  }))
   fieldMappings: z.record(z.string())
 })
 
@@ -77,38 +77,38 @@ export async function GET(request: NextRequest) {
 
     const [templates, total] = await Promise.all([
       prisma.documentTemplate.findMany({
-        where,
+        where
         include: {
           customer: {
             select: { id: true, name: true }
-          },
+          }
           createdBy: {
             select: { id: true, name: true, email: true }
-          },
+          }
           hardcodedMappings: {
-            where: { isActive: true },
+            where: { isActive: true }
             orderBy: { priority: 'desc' }
-          },
-          extractionFields: true,
+          }
+          extractionFields: true
           _count: {
             select: {
               documents: true
             }
           }
-        },
-        skip,
-        take: limit,
+        }
+        skip
+        take: limit
         orderBy: { createdAt: 'desc' }
-      }),
+      })
       prisma.documentTemplate.count({ where })
     ])
 
     return NextResponse.json({
-      templates,
+      templates
       pagination: {
-        page,
-        limit,
-        total,
+        page
+        limit
+        total
         pages: Math.ceil(total / limit)
       }
     })
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.errors },
+        { error: "Validation failed", details: validation.error.issues }
         { status: 400 }
       )
     }
@@ -155,15 +155,15 @@ export async function POST(request: NextRequest) {
     // Check for duplicate template name for the same customer
     const existingTemplate = await prisma.documentTemplate.findFirst({
       where: {
-        customerId,
-        name,
+        customerId
+        name
         isActive: true
       }
     })
 
     if (existingTemplate) {
       return NextResponse.json(
-        { error: "Template with this name already exists for this customer" },
+        { error: "Template with this name already exists for this customer" }
         { status: 409 }
       )
     }
@@ -173,11 +173,11 @@ export async function POST(request: NextRequest) {
       // Create the main template
       const template = await tx.documentTemplate.create({
         data: {
-          customerId,
-          name,
-          description,
-          extractionRules: extractionRules as any,
-          fieldMappings: fieldMappings as any,
+          customerId
+          name
+          description
+          extractionRules: extractionRules as any
+          fieldMappings: fieldMappings as any
           createdById: session.user.id
         }
       })
@@ -186,13 +186,13 @@ export async function POST(request: NextRequest) {
       if (extractionRules.length > 0) {
         await tx.extractionField.createMany({
           data: extractionRules.map(rule => ({
-            templateId: template.id,
-            fieldName: rule.fieldName,
-            dataType: rule.validation?.dataType || 'string',
-            validationRules: rule.validation as any,
-            isRequired: rule.validation?.required || false,
+            templateId: template.id
+            fieldName: rule.fieldName
+            dataType: rule.validation?.dataType || 'string'
+            validationRules: rule.validation as any
+            isRequired: rule.validation?.required || false
             extractionZone: {
-              type: rule.extractionType,
+              type: rule.extractionType
               config: rule.tableConfig || rule.keywordConfig || rule.calculationConfig || {}
             }
           }))
@@ -205,27 +205,27 @@ export async function POST(request: NextRequest) {
     // Log template creation
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "CREATE_TEMPLATE",
-        resource: "TEMPLATES",
+        userId: session.user.id
+        action: "CREATE_TEMPLATE"
+        resource: "TEMPLATES"
         details: {
-          templateId: result.id,
-          templateName: result.name,
-          customerId: result.customerId,
+          templateId: result.id
+          templateName: result.name
+          customerId: result.customerId
           extractionRulesCount: extractionRules.length
         }
       }
     })
 
     return NextResponse.json({
-      template: result,
+      template: result
       message: "Template created successfully"
     }, { status: 201 })
 
   } catch (error) {
     console.error('Error creating template:', error)
     return NextResponse.json({
-      error: "Template creation failed",
+      error: "Template creation failed"
       details: error.message
     }, { status: 500 })
   }

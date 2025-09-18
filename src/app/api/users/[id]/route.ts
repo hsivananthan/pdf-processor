@@ -7,17 +7,18 @@ import { UserRole } from "@prisma/client"
 import { z } from "zod"
 
 const updateUserSchema = z.object({
-  email: z.string().email().optional(),
-  password: z.string().min(8).optional(),
-  name: z.string().optional(),
-  role: z.enum([UserRole.ADMIN, UserRole.MANAGER, UserRole.USER, UserRole.READONLY]).optional(),
+  email: z.string().email().optional()
+  password: z.string().min(8).optional()
+  name: z.string().optional()
+  role: z.enum([UserRole.ADMIN, UserRole.MANAGER, UserRole.USER, UserRole.READONLY]).optional()
   isActive: z.boolean().optional()
 })
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -26,28 +27,28 @@ export async function GET(
     }
 
     // Users can view their own profile, managers/admins can view any user
-    const canView = session.user.id === params.id || hasPermission(session.user.role, UserRole.MANAGER)
+    const canView = session.user.id === id || hasPermission(session.user.role, UserRole.MANAGER)
 
     if (!canView) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: id }
       select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true,
-        failedAttempts: true,
-        lockedUntil: true,
+        id: true
+        email: true
+        name: true
+        role: true
+        isActive: true
+        lastLogin: true
+        createdAt: true
+        updatedAt: true
+        failedAttempts: true
+        lockedUntil: true
         _count: {
           select: {
-            documents: true,
+            documents: true
             processingJobs: true
           }
         }
@@ -67,9 +68,10 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -82,14 +84,14 @@ export async function PATCH(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.errors },
+        { error: "Validation failed", details: validation.error.issues }
         { status: 400 }
       )
     }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!existingUser) {
@@ -97,7 +99,7 @@ export async function PATCH(
     }
 
     // Permission checks
-    const isOwnProfile = session.user.id === params.id
+    const isOwnProfile = session.user.id === id
     const isAdmin = session.user.role === UserRole.ADMIN
     const isManager = session.user.role === UserRole.MANAGER
 
@@ -129,7 +131,7 @@ export async function PATCH(
       const passwordValidation = validatePassword(updateData.password)
       if (!passwordValidation.isValid) {
         return NextResponse.json(
-          { error: "Password validation failed", details: passwordValidation.errors },
+          { error: "Password validation failed", details: passwordValidation.errors }
           { status: 400 }
         )
       }
@@ -153,16 +155,16 @@ export async function PATCH(
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
-      data: updateData,
+      where: { id: id }
+      data: updateData
       select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        lastLogin: true,
-        createdAt: true,
+        id: true
+        email: true
+        name: true
+        role: true
+        isActive: true
+        lastLogin: true
+        createdAt: true
         updatedAt: true
       }
     })
@@ -170,12 +172,12 @@ export async function PATCH(
     // Log user update
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "UPDATE_USER",
-        resource: "USERS",
+        userId: session.user.id
+        action: "UPDATE_USER"
+        resource: "USERS"
         details: {
-          targetUserId: params.id,
-          changes: Object.keys(validation.data),
+          targetUserId: id
+          changes: Object.keys(validation.data)
           isOwnProfile
         }
       }
@@ -190,9 +192,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -206,12 +209,12 @@ export async function DELETE(
     }
 
     // Prevent self-deletion
-    if (session.user.id === params.id) {
+    if (session.user.id === id) {
       return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 })
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     if (!user) {
@@ -220,9 +223,9 @@ export async function DELETE(
 
     // Soft delete by deactivating instead of hard delete to preserve audit trail
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id: id }
       data: {
-        isActive: false,
+        isActive: false
         // Optionally anonymize email to prevent conflicts
         email: `deleted_${Date.now()}_${user.email}`
       }
@@ -231,11 +234,11 @@ export async function DELETE(
     // Log user deletion
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "DELETE_USER",
-        resource: "USERS",
+        userId: session.user.id
+        action: "DELETE_USER"
+        resource: "USERS"
         details: {
-          targetUserId: params.id,
+          targetUserId: id
           targetUserEmail: user.email
         }
       }

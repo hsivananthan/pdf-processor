@@ -81,10 +81,10 @@ export class CustomerDetector {
     // Return the best match or null if no confident match found
     if (results.length === 0) {
       return {
-        customerId: null,
-        customerName: null,
-        confidence: 0,
-        matchedPatterns: [],
+        customerId: null
+        customerName: null
+        confidence: 0
+        matchedPatterns: []
         detectionMethod: 'exact_match'
       }
     }
@@ -103,15 +103,15 @@ export class CustomerDetector {
         patternsData.forEach(pattern => {
           if (typeof pattern === 'string') {
             patterns.push({
-              type: 'text',
-              pattern: pattern,
+              type: 'text'
+              pattern: pattern
               weight: 1.0
             })
           } else if (typeof pattern === 'object') {
             patterns.push({
-              type: pattern.type || 'text',
-              pattern: pattern.pattern || pattern.value,
-              weight: pattern.weight || 1.0,
+              type: pattern.type || 'text'
+              pattern: pattern.pattern || pattern.value
+              weight: pattern.weight || 1.0
               caseSensitive: pattern.caseSensitive || false
             })
           }
@@ -121,8 +121,8 @@ export class CustomerDetector {
         Object.entries(patternsData).forEach(([key, value]) => {
           if (typeof value === 'string') {
             patterns.push({
-              type: key.includes('regex') ? 'regex' : 'text',
-              pattern: value,
+              type: key.includes('regex') ? 'regex' : 'text'
+              pattern: value
               weight: key.includes('name') ? 2.0 : 1.0
             })
           }
@@ -155,10 +155,10 @@ export class CustomerDetector {
     const confidence = totalWeight > 0 ? matchedWeight / totalWeight : 0
 
     return {
-      customerId: confidence > 0.5 ? customer.id : null,
-      customerName: confidence > 0.5 ? customer.name : null,
-      confidence,
-      matchedPatterns,
+      customerId: confidence > 0.5 ? customer.id : null
+      customerName: confidence > 0.5 ? customer.name : null
+      confidence
+      matchedPatterns
       detectionMethod: 'exact_match'
     }
   }
@@ -206,10 +206,10 @@ export class CustomerDetector {
     const confidence = totalWeight > 0 ? matchedWeight / totalWeight : 0
 
     return {
-      customerId: confidence > 0.6 ? customer.id : null,
-      customerName: confidence > 0.6 ? customer.name : null,
-      confidence,
-      matchedPatterns,
+      customerId: confidence > 0.6 ? customer.id : null
+      customerName: confidence > 0.6 ? customer.name : null
+      confidence
+      matchedPatterns
       detectionMethod: 'pattern_match'
     }
   }
@@ -233,10 +233,10 @@ export class CustomerDetector {
     const confidence = words.length > 0 ? (matchedWords / words.length) * 0.8 : 0 // Max 0.8 for fuzzy
 
     return {
-      customerId: confidence > 0.5 ? customer.id : null,
-      customerName: confidence > 0.5 ? customer.name : null,
-      confidence,
-      matchedPatterns,
+      customerId: confidence > 0.5 ? customer.id : null
+      customerName: confidence > 0.5 ? customer.name : null
+      confidence
+      matchedPatterns
       detectionMethod: 'fuzzy_match'
     }
   }
@@ -268,10 +268,10 @@ export class CustomerDetector {
     confidence = Math.min(confidence, 0.9) // Cap at 0.9 for filename-based detection
 
     return {
-      customerId: confidence > 0.5 ? customer.id : null,
-      customerName: confidence > 0.5 ? customer.name : null,
-      confidence,
-      matchedPatterns,
+      customerId: confidence > 0.5 ? customer.id : null
+      customerName: confidence > 0.5 ? customer.name : null
+      confidence
+      matchedPatterns
       detectionMethod: 'fuzzy_match'
     }
   }
@@ -290,7 +290,7 @@ export class CustomerDetector {
       currentPatterns.push(pattern)
 
       await prisma.customer.update({
-        where: { id: customerId },
+        where: { id: customerId }
         data: {
           identifierPatterns: currentPatterns as any
         }
@@ -334,8 +334,8 @@ export class CustomerDetector {
         // Look for lines that might be company names
         if (/^[A-Z][A-Za-z\s&,.]+$/.test(trimmed)) {
           patterns.push({
-            type: 'header',
-            pattern: trimmed,
+            type: 'header'
+            pattern: trimmed
             weight: 1.5
           })
         }
@@ -344,17 +344,17 @@ export class CustomerDetector {
 
     // Extract account numbers or IDs
     const accountPatterns = [
-      /Account[:\s]+([A-Z0-9\-]{3,15})/gi,
-      /ID[:\s]+([A-Z0-9\-]{3,15})/gi,
-      /Reference[:\s]+([A-Z0-9\-]{3,15})/gi,
+      /Account[:\s]+([A-Z0-9\-]{3,15})/gi
+      /ID[:\s]+([A-Z0-9\-]{3,15})/gi
+      /Reference[:\s]+([A-Z0-9\-]{3,15})/gi
     ]
 
     for (const pattern of accountPatterns) {
       let match
       while ((match = pattern.exec(text)) !== null) {
         patterns.push({
-          type: 'regex',
-          pattern: match[1],
+          type: 'regex'
+          pattern: match[1]
           weight: 2.0
         })
       }
@@ -370,7 +370,7 @@ export class CustomerDetector {
     })
 
     return {
-      totalCustomers: this.customers.length,
+      totalCustomers: this.customers.length
       totalPatterns
     }
   }

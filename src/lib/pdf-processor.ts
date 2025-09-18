@@ -52,8 +52,8 @@ export class PDFProcessor {
     try {
       this.tesseractWorker = await createWorker('eng')
       await this.tesseractWorker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?@#$%^&*()_+-=[]{}|;:\'",.<>/?`~\\',
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO
+        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?@#$%^&*()_+-=[]{}|;:\'",.<>/?`~\\'
       })
     } catch (error) {
       console.error('Failed to initialize Tesseract worker:', error)
@@ -69,7 +69,7 @@ export class PDFProcessor {
       // If direct extraction yields good results, use it
       if (directExtraction.text.length > 100 && this.isTextMeaningful(directExtraction.text)) {
         return {
-          ...directExtraction,
+          ...directExtraction
           confidence: 0.95
         }
       }
@@ -94,23 +94,23 @@ export class PDFProcessor {
       textPerPage.forEach((pageText, index) => {
         if (pageText.trim()) {
           pages.push({
-            pageNumber: index + 1,
-            text: pageText.trim(),
+            pageNumber: index + 1
+            text: pageText.trim()
             confidence: 0.95
           })
         }
       })
 
       return {
-        text: data.text,
-        pages,
+        text: data.text
+        pages
         metadata: {
-          totalPages: data.numpages,
-          author: data.info?.Author,
-          creator: data.info?.Creator,
-          creationDate: data.info?.CreationDate ? new Date(data.info.CreationDate) : undefined,
+          totalPages: data.numpages
+          author: data.info?.Author
+          creator: data.info?.Creator
+          creationDate: data.info?.CreationDate ? new Date(data.info.CreationDate) : undefined
           modificationDate: data.info?.ModDate ? new Date(data.info.ModDate) : undefined
-        },
+        }
         confidence: 0.95
       }
     } catch (error) {
@@ -130,17 +130,17 @@ export class PDFProcessor {
       const { data } = await this.tesseractWorker!.recognize(buffer)
 
       const pages: PageData[] = [{
-        pageNumber: 1,
-        text: data.text,
+        pageNumber: 1
+        text: data.text
         confidence: data.confidence / 100
       }]
 
       return {
-        text: data.text,
-        pages,
+        text: data.text
+        pages
         metadata: {
           totalPages: 1 // This would be determined from the PDF conversion
-        },
+        }
         confidence: data.confidence / 100
       }
     } catch (error) {
@@ -177,7 +177,7 @@ export class PDFProcessor {
         // End of table detected
         if (currentTable.length >= 2) { // At least 2 rows to be considered a table
           tables.push({
-            rows: currentTable,
+            rows: currentTable
             headers: currentTable[0], // First row as headers
             position: { x: 0, y: i - currentTable.length, width: 100, height: currentTable.length }
           })
@@ -190,8 +190,8 @@ export class PDFProcessor {
     // Handle table at end of document
     if (currentTable.length >= 2) {
       tables.push({
-        rows: currentTable,
-        headers: currentTable[0],
+        rows: currentTable
+        headers: currentTable[0]
         position: { x: 0, y: lines.length - currentTable.length, width: 100, height: currentTable.length }
       })
     }
@@ -273,8 +273,8 @@ export class PDFProcessor {
 
   async extractNumbers(text: string): Promise<{ currency: number[], percentages: number[], general: number[] }> {
     const numbers = {
-      currency: [] as number[],
-      percentages: [] as number[],
+      currency: [] as number[]
+      percentages: [] as number[]
       general: [] as number[]
     }
 

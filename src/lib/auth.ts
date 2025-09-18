@@ -6,14 +6,14 @@ import bcrypt from "bcryptjs"
 import { UserRole } from "@prisma/client"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma)
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "credentials"
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "email" }
         password: { label: "Password", type: "password" }
-      },
+      }
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
@@ -38,16 +38,16 @@ export const authOptions: NextAuthOptions = {
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          credentials.password
           user.passwordHash
         )
 
         if (!isPasswordValid) {
           // Increment failed attempts
           await prisma.user.update({
-            where: { id: user.id },
+            where: { id: user.id }
             data: {
-              failedAttempts: { increment: 1 },
+              failedAttempts: { increment: 1 }
               lockedUntil: user.failedAttempts >= 4
                 ? new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
                 : undefined
@@ -58,28 +58,28 @@ export const authOptions: NextAuthOptions = {
 
         // Reset failed attempts on successful login
         await prisma.user.update({
-          where: { id: user.id },
+          where: { id: user.id }
           data: {
-            failedAttempts: 0,
-            lockedUntil: null,
+            failedAttempts: 0
+            lockedUntil: null
             lastLogin: new Date()
           }
         })
 
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          id: user.id
+          email: user.email
+          name: user.name
+          role: user.role
         }
       }
     })
-  ],
+  ]
   session: {
-    strategy: "jwt",
+    strategy: "jwt"
     maxAge: parseInt(process.env.SESSION_MAX_AGE || "28800"), // 8 hours default
     updateAge: 24 * 60 * 60, // Force session update every 24 hours
-  },
+  }
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
       }
       return token
-    },
+    }
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id
@@ -95,36 +95,36 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     }
-  },
+  }
   pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-  },
+    signIn: "/auth/signin"
+    error: "/auth/error"
+  }
   events: {
     async signIn({ user, account, profile, isNewUser }) {
       if (user.id) {
         // Log successful login
         await prisma.auditLog.create({
           data: {
-            userId: user.id,
-            action: "LOGIN",
-            resource: "AUTH",
+            userId: user.id
+            action: "LOGIN"
+            resource: "AUTH"
             details: {
-              provider: account?.provider,
+              provider: account?.provider
               timestamp: new Date()
             }
           }
         })
       }
-    },
+    }
     async signOut({ session, token }) {
       if (token?.id) {
         // Log logout
         await prisma.auditLog.create({
           data: {
-            userId: token.id as string,
-            action: "LOGOUT",
-            resource: "AUTH",
+            userId: token.id as string
+            action: "LOGOUT"
+            resource: "AUTH"
             details: { timestamp: new Date() }
           }
         })

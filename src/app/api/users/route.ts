@@ -7,9 +7,9 @@ import { UserRole } from "@prisma/client"
 import { z } from "zod"
 
 const createUserSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().optional(),
+  email: z.string().email("Invalid email format")
+  password: z.string().min(8, "Password must be at least 8 characters")
+  name: z.string().optional()
   role: z.enum([UserRole.ADMIN, UserRole.MANAGER, UserRole.USER, UserRole.READONLY])
 })
 
@@ -40,41 +40,41 @@ export async function GET(request: NextRequest) {
       AND: [
         search ? {
           OR: [
-            { email: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } }
+            { email: { contains: search,  } }
+            { name: { contains: search,  } }
           ]
-        } : {},
+        } : {}
         role ? { role } : {}
       ]
     }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where,
+        where
         select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          isActive: true,
-          lastLogin: true,
-          createdAt: true,
-          failedAttempts: true,
+          id: true
+          email: true
+          name: true
+          role: true
+          isActive: true
+          lastLogin: true
+          createdAt: true
+          failedAttempts: true
           lockedUntil: true
-        },
-        skip,
-        take: limit,
+        }
+        skip
+        take: limit
         orderBy: { createdAt: 'desc' }
-      }),
+      })
       prisma.user.count({ where })
     ])
 
     return NextResponse.json({
-      users,
+      users
       pagination: {
-        page,
-        limit,
-        total,
+        page
+        limit
+        total
         pages: Math.ceil(total / limit)
       }
     })
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error.errors },
+        { error: "Validation failed", details: validation.error.issues }
         { status: 400 }
       )
     }
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     const passwordValidation = validatePassword(password)
     if (!passwordValidation.isValid) {
       return NextResponse.json(
-        { error: "Password validation failed", details: passwordValidation.errors },
+        { error: "Password validation failed", details: passwordValidation.errors }
         { status: 400 }
       )
     }
@@ -132,17 +132,17 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        email,
-        passwordHash: hashedPassword,
-        name,
-        role,
-      },
+        email
+        passwordHash: hashedPassword
+        name
+        role
+      }
       select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
+        id: true
+        email: true
+        name: true
+        role: true
+        isActive: true
         createdAt: true
       }
     })
@@ -150,12 +150,12 @@ export async function POST(request: NextRequest) {
     // Log user creation
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
-        action: "CREATE_USER",
-        resource: "USERS",
+        userId: session.user.id
+        action: "CREATE_USER"
+        resource: "USERS"
         details: {
-          targetUserId: user.id,
-          targetUserEmail: user.email,
+          targetUserId: user.id
+          targetUserEmail: user.email
           targetUserRole: user.role
         }
       }
