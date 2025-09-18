@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+  READONLY
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+  ARCHIVED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          UserRole  @default(USER)
+  name          String?
+  mfaSecret     String?
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  failedAttempts Int      @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions       UserSession[]
+  documents      Document[]
+  processingJobs ProcessingJob[]
+  auditLogs      AuditLog[]
+  createdTemplates DocumentTemplate[] @relation("TemplateCreator")
+
+  @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Customer {
+  id                String   @id @default(cuid())
+  name              String
+  identifierPatterns Json
+  contactInfo       Json?
+  accessPermissions Json?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  documents Document[]
+  templates DocumentTemplate[]
+
+  @@map("customers")
+}
+
+model DocumentTemplate {
+  id              String   @id @default(cuid())
+  customerId      String
+  name            String
+  description     String?
+  extractionRules Json
+  fieldMappings   Json
+  version         Int      @default(1)
+  isActive        Boolean  @default(true)
+  createdById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer         Customer           @relation(fields: [customerId], references: [id])
+  createdBy        User               @relation("TemplateCreator", fields: [createdById], references: [id])
+  documents        Document[]
+  hardcodedMappings HardcodedMapping[]
+  extractionFields  ExtractionField[]
+
+  @@map("document_templates")
+}
+
+model HardcodedMapping {
+  id           String   @id @default(cuid())
+  templateId   String
+  sourcePattern String
+  targetValue   String
+  fieldName     String
+  priority      Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("hardcoded_mappings")
+}
+
+model ExtractionField {
+  id              String   @id @default(cuid())
+  templateId      String
+  fieldName       String
+  dataType        String
+  validationRules Json?
+  isRequired      Boolean  @default(false)
+  extractionZone  Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("extraction_fields")
+}
+
+model Document {
+  id               String         @id @default(cuid())
+  filename         String
+  originalPath     String
+  fileSize         Int
+  mimeType         String
+  customerId       String?
+  templateId       String?
+  uploadedById     String
+  status           DocumentStatus @default(UPLOADED)
+  confidenceScore  Float?
+  detectionLog     Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  customer       Customer?       @relation(fields: [customerId], references: [id])
+  template       DocumentTemplate? @relation(fields: [templateId], references: [id])
+  uploadedBy     User            @relation(fields: [uploadedById], references: [id])
+  processingJobs ProcessingJob[]
+  csvOutputs     CsvOutput[]
+  reprocessingHistory ReprocessingHistory[]
+
+  @@map("documents")
+}
+
+model ProcessingJob {
+  id           String    @id @default(cuid())
+  documentId   String
+  status       JobStatus @default(PENDING)
+  errorMessage String?
+  extractionLog Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  processedById String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  processedBy User?    @relation(fields: [processedById], references: [id])
+
+  @@map("processing_jobs")
+}
+
+model CsvOutput {
+  id           String   @id @default(cuid())
+  documentId   String
+  filePath     String
+  fileName     String
+  rowCount     Int
+  columnCount  Int
+  fileSize     Int
+  downloadCount Int     @default(0)
+  accessLog    Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("csv_outputs")
+}
+
+model ReprocessingHistory {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Int
+  changesMade Json
+  triggeredBy String?
+  createdAt   DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("reprocessing_history")
+}
