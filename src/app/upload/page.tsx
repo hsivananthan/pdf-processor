@@ -61,9 +61,15 @@ export default function UploadPage() {
       if (response.ok) {
         const data = await response.json()
         setCustomers(data.customers || [])
+      } else {
+        console.warn('Failed to load customers:', response.status, response.statusText)
+        // Continue without customers - auto-detect will be used
+        setCustomers([])
       }
     } catch (error) {
       console.error('Failed to load customers:', error)
+      // Continue without customers - auto-detect will be used
+      setCustomers([])
     }
   }
 
