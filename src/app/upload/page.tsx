@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,9 +51,9 @@ export default function UploadPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   // Load customers on component mount
-  useState(() => {
+  useEffect(() => {
     loadCustomers()
-  })
+  }, [])
 
   const loadCustomers = async () => {
     try {
